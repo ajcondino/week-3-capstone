@@ -1,7 +1,7 @@
 const db = require("../config/database");
 
-async function findAll({ category, activeOnly = true } = {}) {
-  let sql = "SELECT * FROM products";
+// Shared by findAll and count so both always apply identical filters.
+function buildWhere({ category, activeOnly }) {
   const params = [];
   const conditions = [];
 
@@ -13,13 +13,35 @@ async function findAll({ category, activeOnly = true } = {}) {
     conditions.push(`category = $${params.length}`);
   }
 
-  if (conditions.length > 0) {
-    sql += " WHERE " + conditions.join(" AND ");
+  const where =
+    conditions.length > 0 ? " WHERE " + conditions.join(" AND ") : "";
+  return { where, params };
+}
+
+async function findAll({ category, activeOnly = true, limit, offset } = {}) {
+  const { where, params } = buildWhere({ category, activeOnly });
+  let sql = "SELECT * FROM products" + where + " ORDER BY name, id";
+
+  if (limit !== undefined) {
+    params.push(limit);
+    sql += ` LIMIT $${params.length}`;
   }
-  sql += " ORDER BY name";
+  if (offset !== undefined) {
+    params.push(offset);
+    sql += ` OFFSET $${params.length}`;
+  }
 
   const { rows } = await db.query(sql, params);
   return rows;
+}
+
+async function count({ category, activeOnly = true } = {}) {
+  const { where, params } = buildWhere({ category, activeOnly });
+  const { rows } = await db.query(
+    "SELECT COUNT(*) FROM products" + where,
+    params
+  );
+  return Number(rows[0].count);
 }
 
 async function findById(id) {
@@ -45,4 +67,4 @@ async function updateStock(productId, quantityDelta) {
   return rows[0] || null;
 }
 
-module.exports = { findAll, findById, findBySku, updateStock };
+module.exports = { findAll, count, findById, findBySku, updateStock };

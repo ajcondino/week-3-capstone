@@ -26,7 +26,7 @@ npm run dev
 | POST | `/api/auth/register` | Create a new account |
 | POST | `/api/auth/login` | Get a JWT token |
 | GET | `/api/users/active` | List active users |
-| GET | `/api/products` | List all products |
+| GET | `/api/products` | List active products, paginated (`?category=`, `?limit=`, `?offset=`) |
 | GET | `/api/orders` | List orders (auth required) |
 | GET | `/api/orders/:id` | Get order details |
 | GET | `/api/orders/history` | Full order history |
@@ -34,6 +34,8 @@ npm run dev
 | POST | `/api/orders` | Create an order |
 | POST | `/api/payments` | Process a payment |
 | POST | `/api/search` | Search across tables |
+
+`GET /api/products` query params: `limit` (default 20, max 100; larger values are clamped) and `offset` (default 0), plus the optional `category` filter. Products are ordered by name, then id. The response is `{ products, count, total, limit, offset }`, where `count` is the number of items in the page and `total` the number matching the filter. A non-integer, negative or zero `limit`, a non-integer or negative `offset`, or a repeated param returns `400 { error }`.
 
 ## Running Tests
 

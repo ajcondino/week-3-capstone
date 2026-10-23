@@ -4,8 +4,10 @@
  * Covers: defaults, custom limit/offset, limit clamping, 400 responses for
  * invalid limit/offset (exact error bodies, model never called), category
  * filter combined with pagination, total reflecting the filter, offset past
- * the end, MAX_SAFE_INTEGER boundaries, and model errors surfacing as 500.
- * Does NOT test: SQL (see tests/models/product.test.js), auth, GET /:id.
+ * the end, MAX_SAFE_INTEGER boundaries, and model errors surfacing as 500
+ * (with the error message in the body). Also pins GET /:id (200 and 404),
+ * which this feature must leave unchanged.
+ * Does NOT test: SQL (see tests/models/product.test.js), auth.
  *
  * Runs against the real app in src/index.js with the database config and the
  * Product model mocked, so no database is needed.
@@ -281,6 +283,7 @@ describe("GET /api/products", () => {
       const res = await request(app).get("/api/products");
 
       expect(res.status).toBe(500);
+      expect(res.body.error).toBe("db down");
     });
 
     it("should return 500 when count rejects", async () => {
@@ -290,6 +293,31 @@ describe("GET /api/products", () => {
       const res = await request(app).get("/api/products");
 
       expect(res.status).toBe(500);
+      expect(res.body.error).toBe("db down");
     });
+  });
+});
+
+describe("GET /api/products/:id", () => {
+  afterEach(() => jest.clearAllMocks());
+
+  it("should return 200 with the product when findById resolves a row", async () => {
+    const product = makeProduct({ id: "prod-1" });
+    Product.findById.mockResolvedValue(product);
+
+    const res = await request(app).get("/api/products/prod-1");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ product });
+    expect(Product.findById).toHaveBeenCalledWith("prod-1");
+  });
+
+  it("should return 404 with an error when findById resolves null", async () => {
+    Product.findById.mockResolvedValue(null);
+
+    const res = await request(app).get("/api/products/missing");
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "Product not found" });
   });
 });
